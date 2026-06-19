@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI HTML Genie - 一句话生成精美网页</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface-2: #1a1a25;
+      --border: #2a2a3a;
+      --text: #e8e8f0;
+      --text-dim: #8888a0;
+      --accent: #6366f1;
+      --accent-2: #8b5cf6;
+      --success: #22c55e;
+      --warning: #f59e0b;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', 'Noto Sans SC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .logo-text { font-size: 20px; font-weight: 700; }
+    .logo-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+    .main { display: flex; height: calc(100vh - 90px); }
+    .sidebar {
+      width: 280px;
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .section-title {
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+    .template-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px; }
+    .template-card {
+      padding: 14px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .template-card:hover { border-color: var(--accent); }
+    .template-card.active {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1));
+    }
+    .template-card .emoji { font-size: 24px; margin-bottom: 6px; }
+    .template-card .name { font-size: 12px; font-weight: 500; }
+    .input-group { margin-bottom: 16px; }
+    .input-group label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+    .input-group input, .input-group textarea, .input-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .input-group textarea { min-height: 100px; resize: vertical; }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .toolbar {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .toolbar-btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .toolbar-btn:hover { border-color: var(--accent); }
+    .preview-area {
+      flex: 1;
+      display: flex;
+    }
+    .preview-frame {
+      flex: 1;
+      border: none;
+      background: white;
+    }
+    .code-panel {
+      width: 0;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+      overflow: hidden;
+      transition: width 0.3s;
+    }
+    .code-panel.open { width: 400px; }
+    .code-panel pre {
+      padding: 16px;
+      font-size: 12px;
+      line-height: 1.6;
+      overflow: auto;
+      height: 100%;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .loading {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(10,10,15,0.9);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 100;
+    }
+    .loading.hidden { display: none; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .settings-row { display: flex; gap: 8px; }
+    .settings-row .input-group { flex: 1; }
+    .api-note {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .api-note a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">✨</div>
+      <div>
+        <div class="logo-text">AI HTML Genie</div>
+        <div class="logo-sub">复刻 html-anything · 一句话生成精美网页</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text-dim);">v1.0 · 5 种模板 · 零配置</div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar">
+      <div class="section-title">选择模板</div>
+      <div class="template-grid">
+        <div class="template-card active" data-template="xiaohongshu">
+          <div class="emoji">📕</div>
+          <div class="name">小红书卡片</div>
+        </div>
+        <div class="template-card" data-template="tweet">
+          <div class="emoji">🐦</div>
+          <div class="name">推文卡片</div>
+        </div>
+        <div class="template-card" data-template="poster">
+          <div class="emoji">🎨</div>
+          <div class="name">海报</div>
+        </div>
+        <div class="template-card" data-template="resume">
+          <div class="emoji">📄</div>
+          <div class="name">简历</div>
+        </div>
+        <div class="template-card" data-template="datareport">
+          <div class="emoji">📊</div>
+          <div class="name">数据报告</div>
+        </div>
+        <div class="template-card" data-template="landing">
+          <div class="emoji">🚀</div>
+          <div class="name">落地页</div>
+        </div>
+      </div>
+
+      <div class="section-title">内容设置</div>
+      <div class="input-group">
+        <label>API Key (AISA)</label>
+        <input type="password" id="apiKey" placeholder="sk-..." value="">
+      </div>
+      <div class="input-group">
+        <label>主题 / 标题</label>
+        <input type="text" id="title" placeholder="例如：如何30天学会Python">
+      </div>
+      <div class="input-group">
+        <label>详细内容</label>
+        <textarea id="content" placeholder="描述你想生成的内容...
+例如：
+- 5个实用技巧
+- 配图建议
+- 目标受众"></textarea>
+      </div>
+      <div class="settings-row">
+        <div class="input-group">
+          <label>风格</label>
+          <select id="style">
+            <option value="modern">现代简约</option>
+            <option value="vibrant">活力色彩</option>
+            <option value="elegant">优雅高端</option>
+            <option value="minimal">极简黑白</option>
+            <option value="cyber">赛博朋克</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>语言</label>
+          <select id="language">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" id="generateBtn" onclick="generate()">✨ 生成 HTML</button>
+      <div class="api-note">
+        默认使用 AISA API (gpt-4.1)。<br>
+        也可填入自己的 OpenAI 兼容 Key。
+      </div>
+    </div>
+
+    <div class="workspace">
+      <div class="toolbar">
+        <button class="toolbar-btn" onclick="downloadHTML()">⬇️ 下载 HTML</button>
+        <button class="toolbar-btn" onclick="toggleCode()">📋 查看代码</button>
+        <button class="toolbar-btn" onclick="copyCode()">📄 复制代码</button>
+        <div style="flex:1"></div>
+        <span id="status" style="font-size:12px;color:var(--text-dim);">准备就绪</span>
+      </div>
+      <div class="preview-area">
+        <iframe class="preview-frame" id="preview"></iframe>
+        <div class="code-panel" id="codePanel">
+          <pre id="codeDisplay"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading hidden" id="loading">
+    <div class="spinner"></div>
+    <div>AI 正在生成精美网页...</div>
+    <div style="font-size:12px;color:var(--text-dim);">通常需要 10-30 秒</div>
+  </div>
+
+  <script>
+    let currentTemplate = 'xiaohongshu';
+    let currentHTML = '';
+
+    document.querySelectorAll('.template-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.template-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        currentTemplate = card.dataset.template;
+      });
+    });
+
+    const TEMPLATE_PROMPTS = {
+      xiaohongshu: (t, c, s, l) => `生成一个精美的小红书风格分享卡片HTML页面。
+主题：${t}
+内容：${c}
+风格：${s}
+语言：${l === 'zh' ? '中文' : 'English'}
+
+要求：
+- 使用现代CSS设计，圆角、阴影、渐变
+- 模仿小红书App的视觉风格（白色卡片、圆角、精美排版）
+- 包含：标题区、正文区、标签区、互动区（点赞/收藏/评论图标）
+- 使用emoji增加趣味性
+- 响应式设计，在手机上也好看
+- 输出完整HTML文件，包含style标签内嵌CSS
+- 不要输出任何解释文字，只输出HTML代码`,
+
+      tweet: (t, c, s, l) => `生成一个精美的Twitter/X风格推文卡片HTML页面。
+主题：${t}
+内容：${c}
+风格：${s}
+语言：${l === 'zh' ? '中文' : 'English'}
+
+要求：
+- 模仿Twitter/X的界面风格
+- 包含：用户头像区、用户名、发布时间、推文内容、互动按钮（回复/转发/点赞/分享）
+- 深色/浅色模式根据风格自动适配
+- 现代CSS设计，圆角、阴影
+- 输出完整HTML文件，包含style标签内嵌CSS
+- 不要输出任何解释文字，只输出HTML代码`,
+
+      poster: (t, c, s, l) => `生成一个精美的海报HTML页面。
+主题：${t}
+内容：${c}
+风格：${s}
+语言：${l === 'zh' ? '中文' : 'English'}
+
+要求：
+- 大尺寸海报设计，适合打印或分享
+- 包含：大标题、副标题、核心信息、视觉元素、底部信息
+- 使用渐变背景、几何图形、精美字体排版
+- 响应式设计
+- 输出完整HTML文件，包含style标签内嵌CSS
+- 不要输出任何解释文字，只输出HTML代码`,
+
+      resume: (t, c, s, l) => `生成一个精美的个人简历HTML页面。
+姓名/主题：${t}
+内容：${c}
+风格：${s}
+语言：${l === 'zh' ? '中文' : 'English'}
+
+要求：
+- 专业的简历/个人介绍页面
+- 包含：个人信息、技能标签、经历时间线、项目展示、联系方式
+- 现代设计，适合在线分享
+- 打印友好
+- 输出完整HTML文件，包含style标签内嵌CSS
+- 不要输出任何解释文字，只输出HTML代码`,
+
+      datareport: (t, c, s, l) => `生成一个精美的数据报告/仪表盘HTML页面。
+主题：${t}
+内容：${c}
+风格：${s}
+语言：${l === 'zh' ? '中文' : 'English'}
+
+要求：
+- 专业的数据展示页面
+- 包含：标题、摘要卡片、数据图表（使用CSS绘制简单图表）、分析结论
+- 使用卡片式布局、进度条、统计数字展示
+- 现代数据可视化风格
+- 输出完整HTML文件，包含style标签内嵌CSS
+- 不要输出任何解释文字，只输出HTML代码`,
+
+      landing: (t, c, s, l) => `生成一个精美的产品落地页HTML页面。
+产品名：${t}
+产品描述：${c}
+风格：${s}
+语言：${l === 'zh' ? '中文' : 'English'}
+
+要求：
+- 专业的产品介绍页面
+- 包含：Hero区域、功能特性、使用步骤、用户评价、CTA按钮、页脚
+- 现代SaaS落地页风格
+- 渐变背景、精美图标、响应式设计
+- 输出完整HTML文件，包含style标签内嵌CSS
+- 不要输出任何解释文字，只输出HTML代码`
+    };
+
+    async function generate() {
+      const apiKey = document.getElementById('apiKey').value.trim() || 'sk-d2n3PIPWBOc3VTgqHuqvtmTaSZ5JtolHBnUAaUrAZgTjst41';
+      const title = document.getElementById('title').value.trim();
+      const content = document.getElementById('content').value.trim();
+      const style = document.getElementById('style').value;
+      const language = document.getElementById('language').value;
+
+      if (!title) { alert('请输入主题'); return; }
+
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('generateBtn').disabled = true;
+      document.getElementById('status').textContent = '生成中...';
+
+      const prompt = TEMPLATE_PROMPTS[currentTemplate](title, content || title, style, language);
+
+      try {
+        const res = await fetch('https://api.aisa.one/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + apiKey
+          },
+          body: JSON.stringify({
+            model: 'gpt-4.1',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7
+          })
+        });
+        const data = await res.json();
+        let html = data.choices?.[0]?.message?.content || '';
+        html = html.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+
+        currentHTML = html;
+        document.getElementById('preview').srcdoc = html;
+        document.getElementById('codeDisplay').textContent = html;
+        document.getElementById('status').textContent = '生成完成 ✅';
+      } catch (e) {
+        document.getElementById('status').textContent = '生成失败 ❌';
+        alert('生成失败: ' + e.message);
+      } finally {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('generateBtn').disabled = false;
+      }
+    }
+
+    function downloadHTML() {
+      if (!currentHTML) { alert('先生成内容'); return; }
+      const blob = new Blob([currentHTML], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ai-genie-' + currentTemplate + '.html';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function toggleCode() {
+      document.getElementById('codePanel').classList.toggle('open');
+    }
+
+    function copyCode() {
+      if (!currentHTML) { alert('先生成内容'); return; }
+      navigator.clipboard.writeText(currentHTML).then(() => {
+        document.getElementById('status').textContent = '已复制到剪贴板 ✅';
+      });
+    }
+
+    // Demo: preload with a welcome message
+    document.getElementById('preview').srcdoc = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+body { font-family: system-ui; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; background:#f5f5f5; }
+.card { background:white; padding:48px; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,0.1); text-align:center; max-width:400px; }
+.card h1 { color:#333; margin-bottom:16px; }
+.card p { color:#666; line-height:1.6; }
+.card .steps { text-align:left; margin-top:24px; }
+.card .steps li { margin:8px 0; color:#555; }
+</style></head>
+<body>
+<div class="card">
+  <h1>✨ AI HTML Genie</h1>
+  <p>选择模板 → 输入内容 → 一键生成精美 HTML 页面</p>
+  <ol class="steps">
+    <li>👈 从左侧选择模板类型</li>
+    <li>📝 输入主题和内容</li>
+    <li>🎨 选择风格</li>
+    <li>✨ 点击生成</li>
+  </ol>
+  <p style="margin-top:20px;font-size:12px;color:#999;">复刻自 html-anything · 开源免费</p>
+</div>
+</body></html>`;
+  </script>
+</body>
+</html>
